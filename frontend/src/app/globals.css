@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-zinc-950 text-zinc-300;
+  }
+
+  ::selection {
+    @apply bg-emerald-500/30 text-zinc-100;
+  }
+
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+}
+
+@layer components {
+  .skeleton {
+    @apply animate-pulse bg-zinc-800 rounded;
+  }
+
+  .btn-primary {
+    @apply bg-emerald-600 hover:bg-emerald-500 text-zinc-100 font-medium
+           px-4 py-2 rounded-lg transition-all duration-200 ease-spring
+           active:scale-[0.98] active:-translate-y-[1px]
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50;
+  }
+
+  .btn-ghost {
+    @apply text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60
+           px-3 py-2 rounded-lg transition-all duration-200 ease-spring
+           active:scale-[0.98] active:-translate-y-[1px]
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-600;
+  }
+
+  .input-field {
+    @apply bg-zinc-900 border border-zinc-800 text-zinc-200
+           px-3 py-2 rounded-lg transition-all duration-200 ease-spring
+           placeholder:text-zinc-600
+           focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600/30;
+  }
+}
