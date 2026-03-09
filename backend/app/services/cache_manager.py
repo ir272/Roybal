@@ -33,12 +33,22 @@ class CacheManager:
         return self.cache_dir / track_id
 
     def get(self, track_id: str) -> Optional[Path]:
-        """Return the cached file path if it exists, else None. Updates atime for LRU."""
+        """Return the cached file path if it exists, else None. Updates atime for LRU.
+
+        Checks for both exact match (track_id) and files with extensions (track_id.ext).
+        """
+        # Check exact path first
         path = self._path_for(track_id)
         if path.exists() and path.stat().st_size > 0:
-            # Touch access time for LRU tracking
             path.touch()
             return path
+
+        # Check for files with extensions (e.g., track_id.webm, track_id.m4a)
+        for f in self.cache_dir.iterdir():
+            if f.is_file() and f.stem == track_id and f.stat().st_size > 0:
+                f.touch()
+                return f
+
         return None
 
     def open_write(self, track_id: str) -> Path:
@@ -50,11 +60,19 @@ class CacheManager:
         """Mark a cache write as complete and run eviction if needed."""
         self._evict_if_needed()
 
+    def register(self, track_id: str, actual_path: Path) -> None:
+        """Register a downloaded file in the cache and run eviction if needed."""
+        self._evict_if_needed()
+
     def remove(self, track_id: str) -> None:
-        """Remove a cached file."""
+        """Remove cached file(s) for a track (with or without extension)."""
         path = self._path_for(track_id)
         if path.exists():
             path.unlink()
+        # Also check for files with extensions
+        for f in self.cache_dir.iterdir():
+            if f.is_file() and f.stem == track_id:
+                f.unlink()
 
     def total_size(self) -> int:
         """Return total size of all cached files in bytes."""

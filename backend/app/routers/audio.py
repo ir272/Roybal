@@ -1,12 +1,11 @@
 import logging
-import os
+import mimetypes
 from datetime import datetime, timezone
-from typing import Optional
+from pathlib import Path
 
 import aiosqlite
-import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import Response, StreamingResponse
+from fastapi.responses import StreamingResponse
 
 from app.db import get_db
 from app.services import ytdlp_service
@@ -16,15 +15,27 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["audio"])
 
-# Shared httpx client for streaming audio from upstream
-_http_client: Optional[httpx.AsyncClient] = None
+# Map common audio extensions to MIME types
+_EXT_TO_MIME: dict[str, str] = {
+    ".webm": "audio/webm",
+    ".opus": "audio/ogg",
+    ".ogg": "audio/ogg",
+    ".m4a": "audio/mp4",
+    ".mp3": "audio/mpeg",
+    ".mp4": "audio/mp4",
+    ".aac": "audio/aac",
+    ".wav": "audio/wav",
+    ".flac": "audio/flac",
+}
 
 
-async def _get_http_client() -> httpx.AsyncClient:
-    global _http_client
-    if _http_client is None or _http_client.is_closed:
-        _http_client = httpx.AsyncClient(follow_redirects=True, timeout=httpx.Timeout(30.0, read=120.0))
-    return _http_client
+def _detect_mime(path: Path) -> str:
+    """Detect MIME type from file extension, falling back to audio/webm."""
+    ext = path.suffix.lower()
+    if ext in _EXT_TO_MIME:
+        return _EXT_TO_MIME[ext]
+    guessed = mimetypes.guess_type(str(path))[0]
+    return guessed or "audio/webm"
 
 
 @router.get("/audio/{track_id}")
@@ -32,8 +43,8 @@ async def stream_audio(
     track_id: str,
     request: Request,
     db: aiosqlite.Connection = Depends(get_db),
-) -> Response:
-    """Stream audio for a track. Serves from cache if available, otherwise fetches via yt-dlp."""
+):
+    """Stream audio for a track. Serves from cache if available, otherwise downloads via yt-dlp first."""
 
     # Look up track
     cursor = await db.execute(
@@ -56,19 +67,18 @@ async def stream_audio(
     if cached_path is not None:
         return _serve_from_cache(cached_path, request)
 
-    # Not cached — stream from source and cache simultaneously
-    return await _stream_and_cache(track_id, source_url, request, db)
+    # Not cached — download via yt-dlp (uses its own throttle-resistant downloader)
+    return await _download_and_serve(track_id, source_url, request, db)
 
 
-def _serve_from_cache(cached_path, request: Request) -> Response:
+def _serve_from_cache(cached_path: Path, request: Request):
     """Serve a cached audio file with Range header support."""
     file_size = cached_path.stat().st_size
-    content_type = "audio/mpeg"
+    content_type = _detect_mime(cached_path)
 
     range_header = request.headers.get("range")
 
     if range_header:
-        # Parse Range: bytes=start-end
         range_spec = range_header.replace("bytes=", "")
         parts = range_spec.split("-")
         start = int(parts[0]) if parts[0] else 0
@@ -118,54 +128,37 @@ def _serve_from_cache(cached_path, request: Request) -> Response:
     )
 
 
-async def _stream_and_cache(
+async def _download_and_serve(
     track_id: str,
     source_url: str,
     request: Request,
     db: aiosqlite.Connection,
-) -> StreamingResponse:
-    """Fetch audio from upstream, stream to client, and write to cache simultaneously."""
+):
+    """Download audio via yt-dlp to cache, then serve from cache."""
 
-    # Get a fresh audio URL via yt-dlp
+    # yt-dlp will choose the correct extension based on the format
+    output_template = str(cache_manager.cache_dir / f"{track_id}.%(ext)s")
+
     try:
-        audio_url = await ytdlp_service.get_audio_url(source_url)
+        actual_path = await ytdlp_service.download_audio(source_url, output_template)
     except Exception as exc:
-        logger.error("Failed to get audio URL for track %s: %s", track_id, exc)
+        logger.error("Failed to download audio for track %s: %s", track_id, exc)
+        cache_manager.remove(track_id)
         raise HTTPException(status_code=502, detail=f"Could not fetch audio: {exc}")
 
-    cache_path = cache_manager.open_write(track_id)
-    client = await _get_http_client()
+    actual_path = Path(actual_path)
 
-    async def stream_generator():
-        cache_file = None
-        try:
-            cache_file = open(cache_path, "wb")
-            async with client.stream("GET", audio_url) as resp:
-                if resp.status_code >= 400:
-                    raise HTTPException(status_code=502, detail="Upstream audio fetch failed")
-                async for chunk in resp.aiter_bytes(chunk_size=64 * 1024):
-                    cache_file.write(chunk)
-                    yield chunk
-            cache_file.close()
-            cache_file = None
+    # Register the downloaded file in the cache manager
+    cache_manager.register(track_id, actual_path)
 
-            # Mark cache complete and update DB
-            cache_manager.mark_complete(track_id)
-            now = datetime.now(timezone.utc).isoformat()
-            await db.execute(
-                "UPDATE tracks SET cached_at = ? WHERE id = ?",
-                (now, track_id),
-            )
-            await db.commit()
-        except Exception:
-            # Clean up partial cache file on error
-            if cache_file is not None:
-                cache_file.close()
-            cache_manager.remove(track_id)
-            raise
-
-    return StreamingResponse(
-        stream_generator(),
-        media_type="audio/mpeg",
-        headers={"Accept-Ranges": "bytes"},
+    # Update DB
+    now = datetime.now(timezone.utc).isoformat()
+    await db.execute(
+        "UPDATE tracks SET cached_at = ? WHERE id = ?",
+        (now, track_id),
     )
+    await db.commit()
+
+    logger.info("Cached audio for track %s at %s (%s bytes)", track_id, actual_path, actual_path.stat().st_size)
+
+    return _serve_from_cache(actual_path, request)

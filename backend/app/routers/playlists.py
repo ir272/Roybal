@@ -125,7 +125,7 @@ async def get_playlist(
     items: list[PlaylistItemResponse] = []
     for row in item_rows:
         track = TrackResponse(
-            id=row["t_id"],
+            track_id=row["t_id"],
             source_url=row["t_source_url"],
             platform=row["t_platform"],
             title=row["t_title"],

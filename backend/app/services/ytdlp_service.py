@@ -18,6 +18,7 @@ class TrackInfo:
     platform: str
     audio_url: str
     source_url: str
+    audio_ext: str = "webm"
 
 
 _BASE_OPTS: dict = {
@@ -69,6 +70,9 @@ def _extract_sync(url: str) -> TrackInfo:
     if not audio_url:
         raise ValueError("Could not extract audio URL from source")
 
+    # Get audio extension from the selected format
+    audio_ext = info.get("ext") or info.get("audio_ext") or "webm"
+
     return TrackInfo(
         title=info.get("title"),
         artist=artist,
@@ -77,6 +81,7 @@ def _extract_sync(url: str) -> TrackInfo:
         platform=platform,
         audio_url=audio_url,
         source_url=url,
+        audio_ext=audio_ext,
     )
 
 
@@ -112,3 +117,36 @@ def _get_audio_url_sync(url: str) -> str:
 async def get_audio_url(source_url: str) -> str:
     """Get a fresh audio stream URL for a given source URL (async wrapper)."""
     return await asyncio.to_thread(_get_audio_url_sync, source_url)
+
+
+def _download_audio_sync(source_url: str, output_path: str) -> str:
+    """Download audio to a specific path using yt-dlp's built-in downloader.
+
+    Returns the actual output file path (yt-dlp may change the extension).
+    """
+    opts = {
+        **_BASE_OPTS,
+        "outtmpl": output_path,
+        "overwrites": True,
+    }
+    with yt_dlp.YoutubeDL(opts) as ydl:
+        info = ydl.extract_info(source_url, download=True)
+
+    if info is None:
+        raise ValueError(f"yt-dlp returned no info for URL: {source_url}")
+
+    # yt-dlp may have written the file with the correct extension appended
+    # Check what file was actually created
+    requested_downloads = info.get("requested_downloads") or []
+    if requested_downloads:
+        return requested_downloads[0].get("filepath", output_path)
+
+    return output_path
+
+
+async def download_audio(source_url: str, output_path: str) -> str:
+    """Download audio to cache path using yt-dlp (async wrapper).
+
+    Returns actual file path written.
+    """
+    return await asyncio.to_thread(_download_audio_sync, source_url, output_path)

@@ -38,7 +38,7 @@ class ResolveResponse(CamelModel):
 # ── Tracks ───────────────────────────────────────────────────────────────────
 
 class TrackResponse(CamelModel):
-    id: str
+    track_id: str
     source_url: str
     platform: str
     title: Optional[str] = None
