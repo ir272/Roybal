@@ -6,8 +6,9 @@ import {
   Playlist as PlaylistIcon,
   CircleNotch,
   Warning,
+  Trash,
 } from "@phosphor-icons/react";
-import { getPlaylists, createPlaylist } from "@/lib/api";
+import { getPlaylists, createPlaylist, deletePlaylist } from "@/lib/api";
 import { PlaylistView } from "@/components/PlaylistView";
 import type { Playlist, Track, Clip } from "@/types";
 
@@ -41,6 +42,20 @@ export function PlaylistSidebar({ tracks, clips }: PlaylistSidebarProps) {
   useEffect(() => {
     fetchPlaylists();
   }, [fetchPlaylists]);
+
+  const handleDelete = useCallback(async (playlistId: string) => {
+    try {
+      await deletePlaylist(playlistId);
+      setPlaylists((prev) => prev.filter((p) => p.id !== playlistId));
+      if (selectedId === playlistId) {
+        setSelectedId(null);
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to delete playlist"
+      );
+    }
+  }, [selectedId]);
 
   const handleCreate = useCallback(async () => {
     const trimmed = newName.trim();
@@ -135,21 +150,39 @@ export function PlaylistSidebar({ tracks, clips }: PlaylistSidebarProps) {
       ) : (
         <nav aria-label="Playlist list" className="space-y-1">
           {playlists.map((pl) => (
-            <button
+            <div
               key={pl.id}
-              onClick={() =>
-                setSelectedId(selectedId === pl.id ? null : pl.id)
-              }
-              className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-all duration-200 ease-spring
-                active:scale-[0.98]
+              className={`flex items-center gap-1 rounded-lg transition-all duration-200 ease-spring group
                 ${
                   selectedId === pl.id
-                    ? "bg-zinc-800 text-zinc-100"
-                    : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-300"
+                    ? "bg-zinc-800"
+                    : "hover:bg-zinc-900"
                 }`}
             >
-              <span className="truncate block">{pl.name}</span>
-            </button>
+              <button
+                onClick={() =>
+                  setSelectedId(selectedId === pl.id ? null : pl.id)
+                }
+                className={`flex-1 text-left px-3 py-2.5 text-sm active:scale-[0.98] transition-colors
+                  ${
+                    selectedId === pl.id
+                      ? "text-zinc-100"
+                      : "text-zinc-400 hover:text-zinc-300"
+                  }`}
+              >
+                <span className="truncate block">{pl.name}</span>
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDelete(pl.id);
+                }}
+                className="shrink-0 p-1.5 mr-1 opacity-0 group-hover:opacity-100 transition-opacity text-zinc-600 hover:text-red-400"
+                aria-label={`Delete playlist ${pl.name}`}
+              >
+                <Trash size={14} />
+              </button>
+            </div>
           ))}
         </nav>
       )}

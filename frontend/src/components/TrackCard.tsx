@@ -1,6 +1,6 @@
 "use client";
 
-import { Play, Scissors, Pause } from "@phosphor-icons/react";
+import { Play, Scissors, Pause, Trash } from "@phosphor-icons/react";
 import { usePlayerContext } from "@/lib/PlayerContext";
 import type { Track } from "@/types";
 
@@ -24,9 +24,10 @@ function platformLabel(platform: string): string {
 interface TrackCardProps {
   track: Track;
   onCreateClip: (track: Track) => void;
+  onDeleteTrack: (track: Track) => void;
 }
 
-export function TrackCard({ track, onCreateClip }: TrackCardProps) {
+export function TrackCard({ track, onCreateClip, onDeleteTrack }: TrackCardProps) {
   const { currentTrack, isPlaying, playTrack, togglePlay } =
     usePlayerContext();
 
@@ -90,7 +91,7 @@ export function TrackCard({ track, onCreateClip }: TrackCardProps) {
             {formatDuration(track.durationMs)}
           </span>
         </div>
-        <div className="pt-1">
+        <div className="pt-1 flex items-center justify-between">
           <button
             onClick={() => onCreateClip(track)}
             className="btn-ghost text-xs flex items-center gap-1.5 px-2 py-1"
@@ -98,6 +99,13 @@ export function TrackCard({ track, onCreateClip }: TrackCardProps) {
           >
             <Scissors size={14} />
             Create clip
+          </button>
+          <button
+            onClick={() => onDeleteTrack(track)}
+            className="opacity-0 group-hover:opacity-100 transition-opacity text-zinc-600 hover:text-red-400 p-1.5"
+            aria-label={`Remove ${track.title} from library`}
+          >
+            <Trash size={14} />
           </button>
         </div>
       </div>

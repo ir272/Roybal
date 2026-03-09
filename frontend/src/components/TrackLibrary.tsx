@@ -8,12 +8,14 @@ interface TrackLibraryProps {
   tracks: Track[];
   isLoading: boolean;
   onCreateClip: (track: Track) => void;
+  onDeleteTrack: (track: Track) => void;
 }
 
 export function TrackLibrary({
   tracks,
   isLoading,
   onCreateClip,
+  onDeleteTrack,
 }: TrackLibraryProps) {
   if (isLoading) {
     return (
@@ -60,6 +62,7 @@ export function TrackLibrary({
             key={track.trackId}
             track={track}
             onCreateClip={onCreateClip}
+            onDeleteTrack={onDeleteTrack}
           />
         ))}
       </div>

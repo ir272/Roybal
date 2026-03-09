@@ -30,6 +30,22 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+export async function getTracks(): Promise<Track[]> {
+  return request<Track[]>("/api/tracks");
+}
+
+export async function getAllClips(): Promise<Clip[]> {
+  return request<Clip[]>("/api/clips");
+}
+
+export async function deleteTrack(trackId: string): Promise<void> {
+  await request<void>(`/api/tracks/${trackId}`, { method: "DELETE" });
+}
+
+export async function deletePlaylist(id: string): Promise<void> {
+  await request<void>(`/api/playlists/${id}`, { method: "DELETE" });
+}
+
 export async function resolveTrack(url: string): Promise<ResolveResponse> {
   return request<ResolveResponse>("/api/resolve", {
     method: "POST",

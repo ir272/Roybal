@@ -1,18 +1,38 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Header } from "@/components/Header";
 import { AddTrack } from "@/components/AddTrack";
 import { TrackLibrary } from "@/components/TrackLibrary";
 import { ClipEditor } from "@/components/ClipEditor";
 import { PlaylistSidebar } from "@/components/PlaylistSidebar";
 import { Player } from "@/components/Player";
+import { getTracks, getAllClips, deleteTrack } from "@/lib/api";
 import type { Track, Clip } from "@/types";
 
 export default function HomePage() {
   const [tracks, setTracks] = useState<Track[]>([]);
   const [clips, setClips] = useState<Clip[]>([]);
   const [editingTrack, setEditingTrack] = useState<Track | null>(null);
+  const [isLoadingLibrary, setIsLoadingLibrary] = useState(true);
+
+  useEffect(() => {
+    async function loadLibrary() {
+      try {
+        const [loadedTracks, loadedClips] = await Promise.all([
+          getTracks(),
+          getAllClips(),
+        ]);
+        setTracks(loadedTracks);
+        setClips(loadedClips);
+      } catch (err) {
+        console.error("Failed to load library:", err);
+      } finally {
+        setIsLoadingLibrary(false);
+      }
+    }
+    loadLibrary();
+  }, []);
 
   const handleTrackResolved = useCallback((track: Track) => {
     setTracks((prev) => {
@@ -21,6 +41,19 @@ export default function HomePage() {
       return [...prev, track];
     });
   }, []);
+
+  const handleDeleteTrack = useCallback(async (track: Track) => {
+    try {
+      await deleteTrack(track.trackId);
+      setTracks((prev) => prev.filter((t) => t.trackId !== track.trackId));
+      setClips((prev) => prev.filter((c) => c.trackId !== track.trackId));
+      if (editingTrack?.trackId === track.trackId) {
+        setEditingTrack(null);
+      }
+    } catch (err) {
+      console.error("Failed to delete track:", err);
+    }
+  }, [editingTrack]);
 
   const handleCreateClip = useCallback((track: Track) => {
     setEditingTrack(track);
@@ -55,8 +88,9 @@ export default function HomePage() {
 
             <TrackLibrary
               tracks={tracks}
-              isLoading={false}
+              isLoading={isLoadingLibrary}
               onCreateClip={handleCreateClip}
+              onDeleteTrack={handleDeleteTrack}
             />
           </main>
 
