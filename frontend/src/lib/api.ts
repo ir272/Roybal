@@ -23,6 +23,10 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
     throw new ApiError(errorBody, res.status);
   }
 
+  if (res.status === 204 || res.headers.get("content-length") === "0") {
+    return undefined as T;
+  }
+
   return res.json() as Promise<T>;
 }
 

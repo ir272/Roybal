@@ -107,6 +107,16 @@ This project has a clean frontend/backend split. If using parallel agents:
 - **Agent 2 (Frontend)**: Next.js app, player component, clip editor, playlist UI
 - **Shared contract**: The API routes and Pydantic/TypeScript types are the interface. Define these first before splitting work.
 
+## Development Cycle
+
+When working on any feature or bug fix, follow this loop:
+
+1. **Plan/brainstorm** — diagnose the issue or design the feature, discuss approach with Ian
+2. **Implement** — make the changes
+3. **Summarize** — explain what changed and why
+4. **Test handoff** — give Ian specific tests to verify
+5. **Iterate or commit** — if Ian reports issues, go back to step 1. If it works, commit and push to GitHub.
+
 ## MVP Priority Order
 
 1. Source resolver (POST /api/resolve) — get yt-dlp extracting audio
