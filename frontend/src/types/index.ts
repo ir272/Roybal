@@ -5,6 +5,7 @@ export interface Track {
   durationMs: number;
   thumbnailUrl: string;
   platform: string;
+  sourceCredit?: string | null;
 }
 
 export interface Clip {
@@ -43,6 +44,11 @@ export interface ResolveResponse {
   durationMs: number;
   thumbnailUrl: string;
   platform: string;
+}
+
+export interface BatchResolveResponse {
+  tracks: ResolveResponse[];
+  failed: string[];
 }
 
 export interface PlayerState {

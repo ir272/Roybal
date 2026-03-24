@@ -91,6 +91,11 @@ export function TrackCard({ track, onCreateClip, onDeleteTrack }: TrackCardProps
             {formatDuration(track.durationMs)}
           </span>
         </div>
+        {track.sourceCredit ? (
+          <p className="text-[10px] text-zinc-600 truncate">
+            {track.sourceCredit}
+          </p>
+        ) : null}
         <div className="pt-1 flex items-center justify-between">
           <button
             onClick={() => onCreateClip(track)}

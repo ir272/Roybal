@@ -105,6 +105,7 @@ async def get_playlist(
             t.artist AS t_artist,
             t.thumbnail_url AS t_thumbnail_url,
             t.duration_ms AS t_duration_ms,
+            t.source_credit AS t_source_credit,
             t.created_at AS t_created_at,
             c.id AS c_id,
             c.track_id AS c_track_id,
@@ -132,6 +133,7 @@ async def get_playlist(
             artist=row["t_artist"],
             thumbnail_url=row["t_thumbnail_url"],
             duration_ms=row["t_duration_ms"],
+            source_credit=row["t_source_credit"],
             created_at=row["t_created_at"],
         )
 

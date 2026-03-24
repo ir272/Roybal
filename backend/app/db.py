@@ -49,6 +49,14 @@ CREATE TABLE IF NOT EXISTS playlist_items (
   position    INTEGER NOT NULL,
   UNIQUE(playlist_id, position)
 );
+
+-- Add source_credit column if it doesn't exist (for TikTok "via @user" attribution)
+-- SQLite doesn't support IF NOT EXISTS for ALTER TABLE, so we handle this in init_db()
+
+CREATE TABLE IF NOT EXISTS spotify_youtube_map (
+  spotify_url TEXT PRIMARY KEY,
+  youtube_url TEXT NOT NULL
+);
 """
 
 
@@ -58,6 +66,13 @@ async def init_db() -> None:
     async with aiosqlite.connect(DB_PATH) as db:
         await db.execute("PRAGMA foreign_keys = ON")
         await db.executescript(_SCHEMA)
+
+        # Migration: add source_credit column if missing
+        cursor = await db.execute("PRAGMA table_info(tracks)")
+        columns = {row[1] for row in await cursor.fetchall()}
+        if "source_credit" not in columns:
+            await db.execute("ALTER TABLE tracks ADD COLUMN source_credit TEXT")
+
         await db.commit()
 
 

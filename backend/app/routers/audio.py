@@ -48,7 +48,7 @@ async def stream_audio(
 
     # Look up track
     cursor = await db.execute(
-        "SELECT id, source_url FROM tracks WHERE id = ?",
+        "SELECT id, source_url, platform FROM tracks WHERE id = ?",
         (track_id,),
     )
     row = await cursor.fetchone()
@@ -56,6 +56,19 @@ async def stream_audio(
         raise HTTPException(status_code=404, detail="Track not found")
 
     source_url: str = row["source_url"]
+
+    # For Spotify tracks, look up the mapped YouTube URL for audio download
+    if row["platform"] == "spotify":
+        yt_cursor = await db.execute(
+            "SELECT youtube_url FROM spotify_youtube_map WHERE spotify_url = ?",
+            (source_url,),
+        )
+        yt_row = await yt_cursor.fetchone()
+        if yt_row is not None:
+            source_url = yt_row["youtube_url"]
+        else:
+            logger.error("No YouTube mapping found for Spotify track %s", track_id)
+            raise HTTPException(status_code=502, detail="No audio source found for this Spotify track")
 
     # Update last_played
     now = datetime.now(timezone.utc).isoformat()

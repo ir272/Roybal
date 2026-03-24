@@ -1,8 +1,13 @@
 "use client";
 
 import { useState, useCallback, type FormEvent } from "react";
-import { Link as LinkIcon, CircleNotch, Warning } from "@phosphor-icons/react";
-import { resolveTrack } from "@/lib/api";
+import {
+  Link as LinkIcon,
+  CircleNotch,
+  Warning,
+  CheckCircle,
+} from "@phosphor-icons/react";
+import { resolveTrack, isBatchResponse } from "@/lib/api";
 import type { Track } from "@/types";
 
 interface AddTrackProps {
@@ -13,6 +18,7 @@ export function AddTrack({ onTrackResolved }: AddTrackProps) {
   const [url, setUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const handleSubmit = useCallback(
     async (e: FormEvent) => {
@@ -22,17 +28,48 @@ export function AddTrack({ onTrackResolved }: AddTrackProps) {
 
       setIsLoading(true);
       setError(null);
+      setSuccessMsg(null);
 
       try {
-        const track = await resolveTrack(trimmed);
-        onTrackResolved({
-          trackId: track.trackId,
-          title: track.title,
-          artist: track.artist,
-          durationMs: track.durationMs,
-          thumbnailUrl: track.thumbnailUrl,
-          platform: track.platform,
-        });
+        const result = await resolveTrack(trimmed);
+
+        if (isBatchResponse(result)) {
+          // Spotify album or playlist — multiple tracks
+          for (const track of result.tracks) {
+            onTrackResolved({
+              trackId: track.trackId,
+              title: track.title,
+              artist: track.artist,
+              durationMs: track.durationMs,
+              thumbnailUrl: track.thumbnailUrl,
+              platform: track.platform,
+            });
+          }
+
+          const added = result.tracks.length;
+          const failedCount = result.failed.length;
+
+          if (failedCount > 0) {
+            setSuccessMsg(
+              `Added ${added} track${added !== 1 ? "s" : ""}. ${failedCount} could not be matched.`
+            );
+          } else {
+            setSuccessMsg(
+              `Added ${added} track${added !== 1 ? "s" : ""} from Spotify.`
+            );
+          }
+        } else {
+          // Single track
+          onTrackResolved({
+            trackId: result.trackId,
+            title: result.title,
+            artist: result.artist,
+            durationMs: result.durationMs,
+            thumbnailUrl: result.thumbnailUrl,
+            platform: result.platform,
+          });
+        }
+
         setUrl("");
       } catch (err) {
         const message =
@@ -58,6 +95,7 @@ export function AddTrack({ onTrackResolved }: AddTrackProps) {
             onChange={(e) => {
               setUrl(e.target.value);
               if (error) setError(null);
+              if (successMsg) setSuccessMsg(null);
             }}
             placeholder="Paste a YouTube, TikTok, SoundCloud, or Spotify URL"
             className="input-field w-full pl-10 pr-4"
@@ -80,6 +118,12 @@ export function AddTrack({ onTrackResolved }: AddTrackProps) {
         <div className="mt-3 flex items-center gap-2 text-sm text-red-400">
           <Warning size={16} />
           <span>{error}</span>
+        </div>
+      ) : null}
+      {successMsg ? (
+        <div className="mt-3 flex items-center gap-2 text-sm text-emerald-400">
+          <CheckCircle size={16} />
+          <span>{successMsg}</span>
         </div>
       ) : null}
     </section>

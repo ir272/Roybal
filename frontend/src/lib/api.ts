@@ -1,4 +1,4 @@
-import type { Track, Clip, Playlist, PlaylistWithItems, PlaylistItem, ResolveResponse } from "@/types";
+import type { Track, Clip, Playlist, PlaylistWithItems, PlaylistItem, ResolveResponse, BatchResolveResponse } from "@/types";
 
 class ApiError extends Error {
   status: number;
@@ -46,11 +46,17 @@ export async function deletePlaylist(id: string): Promise<void> {
   await request<void>(`/api/playlists/${id}`, { method: "DELETE" });
 }
 
-export async function resolveTrack(url: string): Promise<ResolveResponse> {
-  return request<ResolveResponse>("/api/resolve", {
+export async function resolveTrack(url: string): Promise<ResolveResponse | BatchResolveResponse> {
+  return request<ResolveResponse | BatchResolveResponse>("/api/resolve", {
     method: "POST",
     body: JSON.stringify({ url }),
   });
+}
+
+export function isBatchResponse(
+  response: ResolveResponse | BatchResolveResponse
+): response is BatchResolveResponse {
+  return "tracks" in response && Array.isArray((response as BatchResolveResponse).tracks);
 }
 
 export function getAudioUrl(trackId: string): string {

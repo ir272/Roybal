@@ -35,6 +35,11 @@ class ResolveResponse(CamelModel):
     platform: str
 
 
+class BatchResolveResponse(CamelModel):
+    tracks: list[ResolveResponse]
+    failed: list[str] = Field(default_factory=list)  # track titles that failed to match
+
+
 # ── Tracks ───────────────────────────────────────────────────────────────────
 
 class TrackResponse(CamelModel):
@@ -45,6 +50,7 @@ class TrackResponse(CamelModel):
     artist: Optional[str] = None
     thumbnail_url: Optional[str] = None
     duration_ms: Optional[int] = None
+    source_credit: Optional[str] = None
     created_at: Optional[str] = None
 
 
