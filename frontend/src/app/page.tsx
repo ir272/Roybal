@@ -2,19 +2,22 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { Header } from "@/components/Header";
+import type { ActiveView } from "@/components/Header";
 import { AddTrack } from "@/components/AddTrack";
 import { TrackLibrary } from "@/components/TrackLibrary";
 import { ClipEditor } from "@/components/ClipEditor";
 import { PlaylistSidebar } from "@/components/PlaylistSidebar";
+import { PlaylistDetailView } from "@/components/PlaylistDetailView";
 import { Player } from "@/components/Player";
 import { getTracks, getAllClips, deleteTrack } from "@/lib/api";
-import type { Track, Clip } from "@/types";
+import type { Track, Clip, Playlist } from "@/types";
 
 export default function HomePage() {
   const [tracks, setTracks] = useState<Track[]>([]);
   const [clips, setClips] = useState<Clip[]>([]);
   const [editingTrack, setEditingTrack] = useState<Track | null>(null);
   const [isLoadingLibrary, setIsLoadingLibrary] = useState(true);
+  const [activeView, setActiveView] = useState<ActiveView>({ type: "archive" });
 
   useEffect(() => {
     async function loadLibrary() {
@@ -68,35 +71,71 @@ export default function HomePage() {
     setEditingTrack(null);
   }, []);
 
+  const handleSelectPlaylist = useCallback((playlist: Playlist) => {
+    setActiveView({
+      type: "playlist",
+      playlistId: playlist.id,
+      playlistName: playlist.name,
+    });
+  }, []);
+
+  const handleDeselectPlaylist = useCallback(() => {
+    setActiveView({ type: "archive" });
+  }, []);
+
+  const handleNavigate = useCallback((view: ActiveView) => {
+    setActiveView(view);
+    if (view.type === "archive") {
+      setEditingTrack(null);
+    }
+  }, []);
+
   return (
     <div className="min-h-[100dvh] flex flex-col">
-      <Header />
+      <Header activeView={activeView} onNavigate={handleNavigate} />
 
       <div className="flex-1 max-w-[1400px] mx-auto w-full px-6 py-6 pb-28">
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-8">
           {/* Main content */}
-          <main className="space-y-8 min-w-0">
-            <AddTrack onTrackResolved={handleTrackResolved} />
+          <main className="min-w-0">
+            {activeView.type === "archive" ? (
+              <div className="space-y-8">
+                <AddTrack onTrackResolved={handleTrackResolved} />
 
-            {editingTrack ? (
-              <ClipEditor
-                track={editingTrack}
-                onClose={handleCloseEditor}
-                onClipCreated={handleClipCreated}
+                {editingTrack ? (
+                  <ClipEditor
+                    track={editingTrack}
+                    onClose={handleCloseEditor}
+                    onClipCreated={handleClipCreated}
+                  />
+                ) : null}
+
+                <TrackLibrary
+                  tracks={tracks}
+                  isLoading={isLoadingLibrary}
+                  onCreateClip={handleCreateClip}
+                  onDeleteTrack={handleDeleteTrack}
+                />
+              </div>
+            ) : (
+              <PlaylistDetailView
+                playlistId={activeView.playlistId}
+                playlistName={activeView.playlistName}
+                tracks={tracks}
+                clips={clips}
               />
-            ) : null}
-
-            <TrackLibrary
-              tracks={tracks}
-              isLoading={isLoadingLibrary}
-              onCreateClip={handleCreateClip}
-              onDeleteTrack={handleDeleteTrack}
-            />
+            )}
           </main>
 
           {/* Sidebar */}
-          <div className="lg:border-l lg:border-zinc-800/60 lg:pl-8">
-            <PlaylistSidebar tracks={tracks} clips={clips} />
+          <div className="lg:border-l lg:border-zinc-800/60 lg:pl-6">
+            <PlaylistSidebar
+              selectedPlaylistId={
+                activeView.type === "playlist" ? activeView.playlistId : null
+              }
+              onSelectPlaylist={handleSelectPlaylist}
+              onDeselectPlaylist={handleDeselectPlaylist}
+            />
           </div>
         </div>
       </div>

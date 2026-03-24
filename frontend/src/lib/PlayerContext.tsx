@@ -20,6 +20,7 @@ interface PlayerContextValue {
   playlist: PlaylistItem[];
   currentIndex: number;
   isPlaying: boolean;
+  isBuffering: boolean;
   currentTimeMs: number;
   durationMs: number;
   loopMode: LoopMode;
@@ -52,6 +53,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const [playlist, setPlaylist] = useState<PlaylistItem[]>([]);
   const [currentIndex, setCurrentIndex] = useState<number>(-1);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isBuffering, setIsBuffering] = useState(false);
   const [currentTimeMs, setCurrentTimeMs] = useState(0);
   const [durationMs, setDurationMs] = useState(0);
   const [loopMode, setLoopMode] = useState<LoopMode>("none");
@@ -77,38 +79,55 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     currentIndexRef.current = currentIndex;
   }, [currentIndex]);
 
+  // Keep a ref to any pending canplay handler so we can clean it up
+  const pendingCanPlayRef = useRef<(() => void) | null>(null);
+
   const loadAndPlay = useCallback(
     (track: Track, clip: Clip | null) => {
       const audio = audioRef.current;
       if (!audio) return;
 
+      // Clean up any previous pending canplay listener
+      if (pendingCanPlayRef.current) {
+        audio.removeEventListener("canplay", pendingCanPlayRef.current);
+        pendingCanPlayRef.current = null;
+      }
+
       setCurrentTrack(track);
       setCurrentClip(clip);
       setDurationMs(track.durationMs);
+      setIsBuffering(true);
 
       const url = getAudioUrl(track.trackId);
-      if (audio.src !== window.location.origin + url) {
+      const fullUrl = window.location.origin + url;
+
+      // Always set the src for a new track
+      if (audio.src !== fullUrl) {
         audio.src = url;
       }
 
       const startSec = clip ? clip.startMs / 1000 : 0;
 
-      const onCanPlay = () => {
+      const startPlayback = () => {
+        setIsBuffering(false);
         audio.currentTime = startSec;
-        audio.play().catch(() => {
+        audio.play().then(() => {
+          setIsPlaying(true);
+        }).catch((err) => {
+          console.error("Playback failed:", err);
           setIsPlaying(false);
         });
-        setIsPlaying(true);
-        audio.removeEventListener("canplay", onCanPlay);
       };
 
       if (audio.readyState >= 3) {
-        audio.currentTime = startSec;
-        audio.play().catch(() => {
-          setIsPlaying(false);
-        });
-        setIsPlaying(true);
+        startPlayback();
       } else {
+        const onCanPlay = () => {
+          audio.removeEventListener("canplay", onCanPlay);
+          pendingCanPlayRef.current = null;
+          startPlayback();
+        };
+        pendingCanPlayRef.current = onCanPlay;
         audio.addEventListener("canplay", onCanPlay);
         audio.load();
       }
@@ -179,14 +198,28 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
       }
     };
 
+    const handleWaiting = () => setIsBuffering(true);
+    const handlePlaying = () => setIsBuffering(false);
+    const handleError = () => {
+      console.error("Audio error:", audio.error);
+      setIsBuffering(false);
+      setIsPlaying(false);
+    };
+
     audio.addEventListener("timeupdate", handleTimeUpdate);
     audio.addEventListener("ended", handleEnded);
     audio.addEventListener("durationchange", handleDurationChange);
+    audio.addEventListener("waiting", handleWaiting);
+    audio.addEventListener("playing", handlePlaying);
+    audio.addEventListener("error", handleError);
 
     return () => {
       audio.removeEventListener("timeupdate", handleTimeUpdate);
       audio.removeEventListener("ended", handleEnded);
       audio.removeEventListener("durationchange", handleDurationChange);
+      audio.removeEventListener("waiting", handleWaiting);
+      audio.removeEventListener("playing", handlePlaying);
+      audio.removeEventListener("error", handleError);
     };
   }, [advanceToNext]);
 
@@ -270,6 +303,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
         playlist,
         currentIndex,
         isPlaying,
+        isBuffering,
         currentTimeMs,
         durationMs,
         loopMode,

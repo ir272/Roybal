@@ -4,22 +4,24 @@ import { useState, useCallback, useEffect } from "react";
 import {
   Plus,
   Playlist as PlaylistIcon,
-  CircleNotch,
-  Warning,
   Trash,
+  Warning,
 } from "@phosphor-icons/react";
 import { getPlaylists, createPlaylist, deletePlaylist } from "@/lib/api";
-import { PlaylistView } from "@/components/PlaylistView";
-import type { Playlist, Track, Clip } from "@/types";
+import type { Playlist } from "@/types";
 
 interface PlaylistSidebarProps {
-  tracks: Track[];
-  clips: Clip[];
+  selectedPlaylistId: string | null;
+  onSelectPlaylist: (playlist: Playlist) => void;
+  onDeselectPlaylist: () => void;
 }
 
-export function PlaylistSidebar({ tracks, clips }: PlaylistSidebarProps) {
+export function PlaylistSidebar({
+  selectedPlaylistId,
+  onSelectPlaylist,
+  onDeselectPlaylist,
+}: PlaylistSidebarProps) {
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [newName, setNewName] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -43,19 +45,22 @@ export function PlaylistSidebar({ tracks, clips }: PlaylistSidebarProps) {
     fetchPlaylists();
   }, [fetchPlaylists]);
 
-  const handleDelete = useCallback(async (playlistId: string) => {
-    try {
-      await deletePlaylist(playlistId);
-      setPlaylists((prev) => prev.filter((p) => p.id !== playlistId));
-      if (selectedId === playlistId) {
-        setSelectedId(null);
+  const handleDelete = useCallback(
+    async (playlistId: string) => {
+      try {
+        await deletePlaylist(playlistId);
+        setPlaylists((prev) => prev.filter((p) => p.id !== playlistId));
+        if (selectedPlaylistId === playlistId) {
+          onDeselectPlaylist();
+        }
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Failed to delete playlist"
+        );
       }
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to delete playlist"
-      );
-    }
-  }, [selectedId]);
+    },
+    [selectedPlaylistId, onDeselectPlaylist]
+  );
 
   const handleCreate = useCallback(async () => {
     const trimmed = newName.trim();
@@ -66,13 +71,13 @@ export function PlaylistSidebar({ tracks, clips }: PlaylistSidebarProps) {
       setPlaylists((prev) => [...prev, playlist]);
       setNewName("");
       setIsCreating(false);
-      setSelectedId(playlist.id);
+      onSelectPlaylist(playlist);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to create playlist"
       );
     }
-  }, [newName]);
+  }, [newName, onSelectPlaylist]);
 
   return (
     <aside aria-label="Playlists" className="space-y-4">
@@ -154,18 +159,22 @@ export function PlaylistSidebar({ tracks, clips }: PlaylistSidebarProps) {
               key={pl.id}
               className={`flex items-center gap-1 rounded-lg transition-all duration-200 ease-spring group
                 ${
-                  selectedId === pl.id
+                  selectedPlaylistId === pl.id
                     ? "bg-zinc-800"
                     : "hover:bg-zinc-900"
                 }`}
             >
               <button
-                onClick={() =>
-                  setSelectedId(selectedId === pl.id ? null : pl.id)
-                }
+                onClick={() => {
+                  if (selectedPlaylistId === pl.id) {
+                    onDeselectPlaylist();
+                  } else {
+                    onSelectPlaylist(pl);
+                  }
+                }}
                 className={`flex-1 text-left px-3 py-2.5 text-sm active:scale-[0.98] transition-colors
                   ${
-                    selectedId === pl.id
+                    selectedPlaylistId === pl.id
                       ? "text-zinc-100"
                       : "text-zinc-400 hover:text-zinc-300"
                   }`}
@@ -186,14 +195,6 @@ export function PlaylistSidebar({ tracks, clips }: PlaylistSidebarProps) {
           ))}
         </nav>
       )}
-
-      {selectedId ? (
-        <PlaylistView
-          playlistId={selectedId}
-          tracks={tracks}
-          clips={clips}
-        />
-      ) : null}
     </aside>
   );
 }

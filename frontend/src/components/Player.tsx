@@ -9,6 +9,7 @@ import {
   Repeat,
   RepeatOnce,
   SpeakerHigh,
+  CircleNotch,
 } from "@phosphor-icons/react";
 import { usePlayerContext } from "@/lib/PlayerContext";
 
@@ -24,6 +25,7 @@ export function Player() {
     currentTrack,
     currentClip,
     isPlaying,
+    isBuffering,
     currentTimeMs,
     durationMs,
     loopMode,
@@ -166,12 +168,14 @@ export function Player() {
             className="w-9 h-9 rounded-full bg-zinc-200 text-zinc-950 flex items-center justify-center
                        hover:bg-zinc-100 active:scale-[0.95] transition-all duration-200 ease-spring
                        disabled:opacity-30 disabled:cursor-not-allowed"
-            aria-label={isPlaying ? "Pause" : "Play"}
+            aria-label={isBuffering ? "Loading" : isPlaying ? "Pause" : "Play"}
           >
-            {isPlaying ? (
+            {isBuffering ? (
+              <CircleNotch size={18} className="animate-spin" />
+            ) : isPlaying ? (
               <Pause size={18} weight="fill" />
             ) : (
-              <Play size={18} weight="fill" className="ml-0.5" />
+              <Play size={18} weight="fill" />
             )}
           </button>
           <button
