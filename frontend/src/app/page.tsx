@@ -99,24 +99,23 @@ export default function HomePage() {
           {/* Main content */}
           <main className="min-w-0">
             {activeView.type === "archive" ? (
-              <div className="space-y-8">
-                <AddTrack onTrackResolved={handleTrackResolved} />
-
-                {editingTrack ? (
-                  <ClipEditor
-                    track={editingTrack}
-                    onClose={handleCloseEditor}
-                    onClipCreated={handleClipCreated}
-                  />
-                ) : null}
-
-                <TrackLibrary
-                  tracks={tracks}
-                  isLoading={isLoadingLibrary}
-                  onCreateClip={handleCreateClip}
-                  onDeleteTrack={handleDeleteTrack}
+              editingTrack ? (
+                <ClipEditor
+                  track={editingTrack}
+                  onClose={handleCloseEditor}
+                  onClipCreated={handleClipCreated}
                 />
-              </div>
+              ) : (
+                <div className="space-y-8">
+                  <AddTrack onTrackResolved={handleTrackResolved} />
+                  <TrackLibrary
+                    tracks={tracks}
+                    isLoading={isLoadingLibrary}
+                    onCreateClip={handleCreateClip}
+                    onDeleteTrack={handleDeleteTrack}
+                  />
+                </div>
+              )
             ) : (
               <PlaylistDetailView
                 playlistId={activeView.playlistId}

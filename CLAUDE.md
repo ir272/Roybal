@@ -117,6 +117,28 @@ When working on any feature or bug fix, follow this loop:
 4. **Test handoff** — give Ian specific tests to verify
 5. **Iterate or commit** — if Ian reports issues, go back to step 1. If it works, commit and push to GitHub.
 
+## Known Bugs & Patterns to Avoid
+
+### ClipEditor must be a full-page view, NOT inline above the library
+When "Create clip" is clicked, the ClipEditor must **replace** the entire main content area (the archive grid). Do NOT render it inline above the TrackLibrary — the user will see the song play but won't notice the editor, and the layout looks broken.
+
+**Correct pattern** in `page.tsx`:
+```tsx
+{activeView.type === "archive" ? (
+  editingTrack ? (
+    <ClipEditor ... />   // full page — no library below
+  ) : (
+    <div>
+      <AddTrack />
+      <TrackLibrary />
+    </div>
+  )
+) : null}
+```
+The library comes back when the editor is closed or a clip is saved.
+
+---
+
 ## MVP Priority Order
 
 1. Source resolver (POST /api/resolve) — get yt-dlp extracting audio
