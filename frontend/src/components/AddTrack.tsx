@@ -46,18 +46,16 @@ export function AddTrack({ onTrackResolved }: AddTrackProps) {
             });
           }
 
-          const added = result.tracks.length;
+          const newTracks = result.tracks.filter((t) => !t.alreadyExists);
+          const dupes = result.tracks.filter((t) => t.alreadyExists);
           const failedCount = result.failed.length;
+          const added = newTracks.length;
 
-          if (failedCount > 0) {
-            setSuccessMsg(
-              `Added ${added} track${added !== 1 ? "s" : ""}. ${failedCount} could not be matched.`
-            );
-          } else {
-            setSuccessMsg(
-              `Added ${added} track${added !== 1 ? "s" : ""} from Spotify.`
-            );
-          }
+          const parts: string[] = [];
+          if (added > 0) parts.push(`Added ${added} track${added !== 1 ? "s" : ""} from Spotify.`);
+          if (dupes.length > 0) parts.push(`${dupes.length} already in library.`);
+          if (failedCount > 0) parts.push(`${failedCount} could not be matched.`);
+          setSuccessMsg(parts.join(" ") || "Nothing new to add.");
         } else {
           // Single track
           onTrackResolved({
@@ -68,6 +66,11 @@ export function AddTrack({ onTrackResolved }: AddTrackProps) {
             thumbnailUrl: result.thumbnailUrl,
             platform: result.platform,
           });
+          if (result.alreadyExists) {
+            setSuccessMsg(`"${result.title}" is already in your library.`);
+          } else {
+            setSuccessMsg(`Added "${result.title}".`);
+          }
         }
 
         setUrl("");

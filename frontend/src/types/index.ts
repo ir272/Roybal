@@ -44,6 +44,7 @@ export interface ResolveResponse {
   durationMs: number;
   thumbnailUrl: string;
   platform: string;
+  alreadyExists?: boolean;
 }
 
 export interface BatchResolveResponse {

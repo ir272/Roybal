@@ -33,6 +33,7 @@ class ResolveResponse(CamelModel):
     duration_ms: Optional[int] = None
     thumbnail_url: Optional[str] = None
     platform: str
+    already_exists: bool = False
 
 
 class BatchResolveResponse(CamelModel):

@@ -100,6 +100,7 @@ async def resolve_url(
                     duration_ms=row["duration_ms"],
                     thumbnail_url=row["thumbnail_url"],
                     platform=row["platform"],
+                    already_exists=True,
                 )
 
             sp_track = await _get_spotify_track(spotify_id)
@@ -153,6 +154,7 @@ async def resolve_url(
             duration_ms=row["duration_ms"],
             thumbnail_url=row["thumbnail_url"],
             platform=row["platform"],
+            already_exists=True,
         )
 
     try:
@@ -241,6 +243,7 @@ async def _resolve_single_spotify_track(
             duration_ms=row["duration_ms"],
             thumbnail_url=row["thumbnail_url"],
             platform="spotify",
+            already_exists=True,
         )
 
     logger.info(
