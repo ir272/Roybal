@@ -6,6 +6,7 @@ export interface Track {
   thumbnailUrl: string;
   platform: string;
   sourceCredit?: string | null;
+  createdAt?: string | null;
 }
 
 export interface Clip {

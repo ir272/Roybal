@@ -11,6 +11,11 @@ function formatDuration(ms: number): string {
   return `${min}:${sec.toString().padStart(2, "0")}`;
 }
 
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
 function platformLabel(platform: string): string {
   const labels: Record<string, string> = {
     youtube: "YouTube",
@@ -94,6 +99,11 @@ export function TrackCard({ track, onCreateClip, onDeleteTrack }: TrackCardProps
         {track.sourceCredit ? (
           <p className="text-[10px] text-zinc-600 truncate">
             {track.sourceCredit}
+          </p>
+        ) : null}
+        {track.createdAt ? (
+          <p className="text-[10px] text-zinc-700">
+            Added {formatDate(track.createdAt)}
           </p>
         ) : null}
         <div className="pt-1 flex items-center justify-between">
